@@ -55,21 +55,31 @@ async def check_mandatory_subs(user_id):
     if not channels:
         return True, None
     
-    not_subbed = []
+    not_subbed_tg = False
+    keyboard = []
+    
     for ch in channels:
-        try:
-            member = await bot.get_chat_member(chat_id=ch['chat_id'], user_id=user_id)
-            if member.status not in ['member', 'administrator', 'creator']:
-                not_subbed.append(ch)
-        except Exception:
-            pass # Agar bot kanalda admin bo'lmasa, xatoni o'tkazib yuboramiz
+        if ch['platform'] == 'telegram':
+            try:
+                member = await bot.get_chat_member(chat_id=ch['chat_id'], user_id=user_id)
+                if member.status not in ['member', 'administrator', 'creator']:
+                    not_subbed_tg = True
+                    keyboard.append([InlineKeyboardButton(text=f"📢 {ch['name']}", url=ch['url'])])
+            except Exception:
+                pass # Agar bot kanalda admin bo'lmasa xatoni o'tkazib yuboradi
+        elif ch['platform'] == 'youtube':
+            keyboard.append([InlineKeyboardButton(text=f"🔴 {ch['name']}", url=ch['url'])])
+        elif ch['platform'] == 'instagram':
+            keyboard.append([InlineKeyboardButton(text=f"📸 {ch['name']}", url=ch['url'])])
             
-    if not_subbed:
-        keyboard = []
-        for ch in not_subbed:
-            keyboard.append([InlineKeyboardButton(text=ch['name'], url=ch['url'])])
-        keyboard.append([InlineKeyboardButton(text="✅ Obuna bo'ldim", callback_data="check_sub")])
-        return False, InlineKeyboardMarkup(inline_keyboard=keyboard)
+    # Agar hech bo'lmasa bitta Telegram kanalga obuna bo'lmagan bo'lsa yoki menyuni chiqarish kerak bo'lsa
+    if not_subbed_tg or (keyboard and not not_subbed_tg and "youtube" in str(channels)):
+        # Aslida, foydalanuvchini har safar YT/IG ga bosishga majbur qilmaslik uchun 
+        # faqat Telegram kanalga a'zo bo'lmasa shu menyuni ko'rsatamiz.
+        if not_subbed_tg:
+            keyboard.append([InlineKeyboardButton(text="✅ Obuna bo'ldim", callback_data="check_sub")])
+            return False, InlineKeyboardMarkup(inline_keyboard=keyboard)
+            
     return True, None
 
 # --- ASOSIY MENYU BUYRUQLARI ---
